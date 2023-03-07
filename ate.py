@@ -14,29 +14,40 @@ if obs_data:
     pxyp = (1-pyx)*px
     pxpy = pyxp*(1-px)
     pxpyp = (1-pyxp)*(1-px)
-    upper_bound = [0,1,0]
+    first_upper_bound = pxy + pxpyp
 
 fig, ax = plt.subplots()
 
 def lower(ate):
     return max(0, ate)
 def upper(ate):
-    return min(pxy + pxpyp, max(0, ate + pxpy + pxyp))
+    return min(first_upper_bound, max(0, ate + pxpy + pxyp))
 
 if obs_data:
     ates = np.linspace(-1, 1, num=201)
+    lowers = list(map(lower, ates))
+    uppers = np.array(list(map(upper, ates)))
     plt.stackplot(ates,
-                  list(map(lower, ates)),
-                  list(map(upper, ates)),
+                  lowers,
+                  np.clip(uppers - lowers, 0, None),
+                  alpha = 0.5,
                   colors =['w', 'g'])
-    # ax.add_patch(patches.Rectangle((0, 0),
-    #                                0.5,
-    #                                1,
-    #                                facecolor='black',
-    #                                alpha=0.4,
-    #                                fill=True))
+    left_incompatible_ate = first_upper_bound - 1
+    right_incompatible_ate = first_upper_bound
+    ax.add_patch(patches.Rectangle((-1, 0),
+                                   left_incompatible_ate + 1,
+                                   1,
+                                   facecolor='black',
+                                   alpha=0.4,
+                                   fill=True))
+    ax.add_patch(patches.Rectangle((right_incompatible_ate, 0),
+                                   1 - right_incompatible_ate,
+                                   1,
+                                   facecolor='black',
+                                   alpha=0.4,
+                                   fill=True))
 else:
-    plt.stackplot([-1, 0, 1], [0,0,1], [0,1,0], colors =['w', 'g'])
+    plt.stackplot([-1, 0, 1], [0,0,1], [0,1,0], alpha = 0.5, colors =['w', 'g'])
 
 plt.xlabel('ATE')
 plt.ylabel('PNS')
