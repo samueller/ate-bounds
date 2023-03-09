@@ -6,6 +6,8 @@ import numpy as np
 col1, col2 = st.columns(2)
 
 obs_data = col1.checkbox('Observational data?')
+pns = 'Benefit' == col1.radio('Probability of', ('Benefit', 'Harm'), horizontal=True)
+
 if obs_data:
     px = col1.slider('$P(x)$', 0.0, 1.0, .5, step=0.01)
     pyx = col2.slider('$P(y|x)$', 0.0, 1.0, .5, step=0.01)
@@ -14,14 +16,20 @@ if obs_data:
     pxyp = (1-pyx)*px
     pxpy = pyxp*(1-px)
     pxpyp = (1-pyxp)*(1-px)
-    first_upper_bound = pxy + pxpyp
+    pxy_plus_pxpyp = pxy + pxpyp
 
 fig, ax = plt.subplots()
 
 def lower(ate):
-    return max(0, ate)
+    if pns:
+        return max(0, ate)
+    else:
+        return max(0, -ate)
 def upper(ate):
-    return min(first_upper_bound, max(0, ate + pxpy + pxyp))
+    if pns:
+        return min(pxy_plus_pxpyp, max(0, ate + pxpy + pxyp))
+    else:
+        return min(1 - pxy_plus_pxpyp, max(0, pxy + pxpyp - ate))
 
 if obs_data:
     ates = np.linspace(-1, 1, num=201)
@@ -32,26 +40,33 @@ if obs_data:
                   np.clip(uppers - lowers, 0, None),
                   alpha = 0.5,
                   colors =['w', 'g'])
-    left_incompatible_ate = first_upper_bound - 1
-    right_incompatible_ate = first_upper_bound
+    left_incompatible_ate = pxy_plus_pxpyp - 1
+    right_incompatible_ate = pxy_plus_pxpyp
     ax.add_patch(patches.Rectangle((-1, 0),
                                    left_incompatible_ate + 1,
                                    1,
                                    facecolor='black',
-                                   alpha=0.4,
+                                   alpha=0.2,
                                    fill=True))
     ax.add_patch(patches.Rectangle((right_incompatible_ate, 0),
                                    1 - right_incompatible_ate,
                                    1,
                                    facecolor='black',
-                                   alpha=0.4,
+                                   alpha=0.2,
                                    fill=True))
 else:
-    plt.stackplot([-1, 0, 1], [0,0,1], [0,1,0], alpha = 0.5, colors =['w', 'g'])
+    if pns:
+        plt.stackplot([-1, 0, 1], [0,0,1], [0,1,0], alpha = 0.5, colors =['w', 'g'])
+    else:
+        plt.stackplot([-1, 0, 1], [1,0,0], [0,1,0], alpha = 0.5, colors =['w', 'g'])
 
 plt.xlabel('ATE')
-plt.ylabel('PNS')
-plt.title('Lower and Upper PNS bounds vs ATE')
+if pns:
+    plt.ylabel('PNS')
+    plt.title('Lower and Upper PNS bounds vs ATE')
+else:
+    plt.ylabel('P(harm)')
+    plt.title('Lower and Upper P(harm) bounds vs ATE')
 st.pyplot(fig)
 
 if obs_data:
